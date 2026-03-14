@@ -2,11 +2,11 @@
 
 **Natural language database client** — query your databases in plain English (or Portuguese) without writing SQL.
 
-DBeer is a desktop app built with Electron that translates natural language into read-only SQL queries using Claude (Anthropic). Just describe what you want to see, and DBeer generates and runs the query for you.
+DBeer is a desktop app built with Electron that translates natural language into read-only SQL queries using the AI provider of your choice. Just describe what you want to see, and DBeer generates and runs the query for you.
 
 ## Features
 
-- **Natural language to SQL** — choose your AI provider: Anthropic Claude, OpenAI GPT, Google Gemini, or Ollama (local)
+- **Natural language to SQL** — choose your AI provider: Anthropic Claude, OpenAI, Google Gemini, Groq, or Ollama (local)
 - **Read-only by design** — two-layer enforcement (AI prompt + `sql-guard` regex blacklist) blocks any INSERT, UPDATE, DELETE, DDL, or administrative statement, regardless of which AI provider is used
 - **Multi-database support** — PostgreSQL, MySQL, SQL Server, Oracle, SQLite
 - **Schema-aware** — automatically introspects tables, columns, primary/foreign keys, and views so the model generates accurate queries
@@ -17,30 +17,94 @@ DBeer is a desktop app built with Electron that translates natural language into
 
 ## Supported Databases
 
-| Database   | Driver         |
-|------------|----------------|
-| PostgreSQL | `pg`           |
-| MySQL      | `mysql2`       |
-| SQL Server | `mssql`        |
-| Oracle     | `oracledb`     |
+| Database   | Driver           |
+|------------|------------------|
+| PostgreSQL | `pg`             |
+| MySQL      | `mysql2`         |
+| SQL Server | `mssql`          |
+| Oracle     | `oracledb`       |
 | SQLite     | `better-sqlite3` |
 
 ## AI Providers
 
-| Provider | Models | Requires |
-|----------|--------|----------|
-| Anthropic Claude | Sonnet 4, Opus 4, Haiku 4.5 | API key |
-| OpenAI | GPT-4o, GPT-4o mini, o3-mini | API key |
-| Google Gemini | 2.0 Flash, 1.5 Pro, 1.5 Flash | API key |
-| Groq | Llama 3.3 70B, Llama 3.1 8B, Mixtral, Gemma 2 | API key (free tier available) |
-| Ollama (local) | llama3, deepseek-coder, mistral… | Ollama running locally |
+DBeer supports five AI providers. Switch between them at any time in **Settings** — the read-only SQL guard applies to all of them.
 
-Switch providers at any time in **Settings** — the read-only SQL guard applies to all of them.
+### Anthropic Claude
+The original provider. Claude models are excellent at following strict formatting instructions and refusing disallowed operations, making them a natural fit for DBeer's read-only enforcement.
+
+| Model | Description |
+|-------|-------------|
+| Claude Sonnet 4 | Recommended. Best balance of speed and capability |
+| Claude Opus 4 | Most capable, best for complex multi-join queries |
+| Claude Haiku 4.5 | Fastest and cheapest |
+
+**Requires:** API key from [console.anthropic.com](https://console.anthropic.com)
+
+---
+
+### OpenAI
+The GPT family. Well-established models with strong SQL generation and support for `json_object` response format, which improves reliability.
+
+| Model | Description |
+|-------|-------------|
+| GPT-4o | Recommended. Fast and highly capable |
+| GPT-4o mini | Cheapest option, good for simple queries |
+| o3-mini | Reasoning model, best for complex analytical queries |
+
+**Requires:** API key from [platform.openai.com](https://platform.openai.com)
+
+---
+
+### Google Gemini
+Google's multimodal models. Gemini 2.0 Flash is remarkably fast with a large context window, useful when connected to databases with many tables.
+
+| Model | Description |
+|-------|-------------|
+| Gemini 2.0 Flash | Recommended. Ultra-fast with a 1M token context |
+| Gemini 1.5 Pro | Most capable Gemini model |
+| Gemini 1.5 Flash | Lightweight and fast |
+
+**Requires:** API key from [Google AI Studio](https://aistudio.google.com)
+
+---
+
+### Groq
+Groq runs open-source LLMs on custom LPU hardware, delivering inference speeds far beyond GPU-based providers. It offers a **free tier** with generous rate limits — ideal for trying DBeer without any cost.
+
+| Model | Description |
+|-------|-------------|
+| Llama 3.3 70B | Recommended. Best quality on Groq |
+| Llama 3.1 8B Instant | Ultra-fast, great for simple queries |
+| Llama 3 70B | Solid general-purpose model |
+| Mixtral 8x7B | Good at structured output and SQL |
+| Gemma 2 9B | Lightweight alternative |
+
+**Requires:** Free API key from [console.groq.com](https://console.groq.com)
+
+---
+
+### Ollama (Local)
+Run models entirely on your own machine — no API key, no data leaves your computer. Requires [Ollama](https://ollama.com) to be installed and running locally.
+
+Any model available in Ollama can be used. Recommended for SQL generation:
+
+| Model | Pull command |
+|-------|-------------|
+| Llama 3.3 | `ollama pull llama3.3` |
+| DeepSeek Coder V2 | `ollama pull deepseek-coder-v2` |
+| Mistral | `ollama pull mistral` |
+| Codestral | `ollama pull codestral` |
+
+The default base URL is `http://localhost:11434`. Change it in Settings if Ollama runs on a different host or port.
+
+**Requires:** [Ollama](https://ollama.com) running locally — no API key needed
+
+---
 
 ## Requirements
 
 - Node.js 18+
-- An API key for your chosen AI provider (or [Ollama](https://ollama.com) for fully local usage)
+- One of the above AI providers (Ollama for fully offline usage)
 
 ## Getting Started
 
@@ -55,7 +119,7 @@ npm run dev
 npm start
 ```
 
-On first launch, open **Settings** and enter your Anthropic API key.
+On first launch, open **Settings**, choose your AI provider, and enter the corresponding API key.
 
 ## Build
 
@@ -86,8 +150,10 @@ Packaged apps are output to `release/`.
 
 DBeer enforces read-only access at two independent layers:
 
-1. **AI prompt** — Claude is instructed to only generate `SELECT`, `WITH`, `SHOW`, `DESCRIBE`, and `EXPLAIN` statements and to refuse any write request
+1. **AI prompt** — every provider is instructed via system prompt to only generate `SELECT`, `WITH`, `SHOW`, `DESCRIBE`, and `EXPLAIN` statements, and to refuse any write request
 2. **`sql-guard`** — a regex-based validator runs before every query reaches the database driver, blocking forbidden statements (INSERT, UPDATE, DELETE, CREATE, DROP, EXEC, etc.) and multi-statement attacks
+
+Even if a model ignores the prompt instructions, the SQL guard prevents the query from executing.
 
 ## Tech Stack
 
@@ -95,7 +161,9 @@ DBeer enforces read-only access at two independent layers:
 - **React + TypeScript** — renderer UI
 - **Tailwind CSS** — styling
 - **Vite** — renderer bundler
-- **Anthropic SDK** — Claude integration
+- **@anthropic-ai/sdk** — Claude integration
+- **openai** — OpenAI, Groq, and Ollama integration (all use OpenAI-compatible APIs)
+- **@google/generative-ai** — Google Gemini integration
 - **Recharts** — data visualization
 - **electron-store** — persistent settings and history
 
