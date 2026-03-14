@@ -7,6 +7,7 @@ const PROVIDERS: { id: AIProvider; label: string; description: string }[] = [
   { id: 'anthropic', label: 'Anthropic Claude', description: 'claude-sonnet, claude-opus, claude-haiku' },
   { id: 'openai',    label: 'OpenAI',           description: 'GPT-4o, GPT-4o mini, o3-mini' },
   { id: 'gemini',    label: 'Google Gemini',    description: 'gemini-2.0-flash, gemini-1.5-pro' },
+  { id: 'groq',      label: 'Groq',             description: 'Llama 3.3 · gratuito · ultra-rápido' },
   { id: 'ollama',    label: 'Ollama (Local)',    description: 'llama3, deepseek-coder, mistral…' },
 ];
 
@@ -28,12 +29,21 @@ const GEMINI_MODELS = [
   { value: 'gemini-1.5-flash',  label: 'Gemini 1.5 Flash (Fastest)' },
 ];
 
+const GROQ_MODELS = [
+  { value: 'llama-3.3-70b-versatile', label: 'Llama 3.3 70B (Recommended)' },
+  { value: 'llama-3.1-8b-instant',    label: 'Llama 3.1 8B Instant (Ultra-fast)' },
+  { value: 'llama3-70b-8192',         label: 'Llama 3 70B' },
+  { value: 'mixtral-8x7b-32768',      label: 'Mixtral 8x7B' },
+  { value: 'gemma2-9b-it',            label: 'Gemma 2 9B' },
+];
+
 type FormState = Pick<AppSettings,
   | 'aiProvider'
   | 'anthropicApiKey' | 'claudeModel'
   | 'openaiApiKey'    | 'openaiModel'
   | 'geminiApiKey'    | 'geminiModel'
   | 'ollamaBaseUrl'   | 'ollamaModel'
+  | 'groqApiKey'      | 'groqModel'
   | 'theme' | 'maxRowsPreview'
 >;
 
@@ -47,6 +57,8 @@ export function SettingsDialog() {
     openaiModel: 'gpt-4o',
     geminiApiKey: '',
     geminiModel: 'gemini-2.0-flash',
+    groqApiKey: '',
+    groqModel: 'llama-3.3-70b-versatile',
     ollamaBaseUrl: 'http://localhost:11434',
     ollamaModel: 'llama3',
     theme: 'dark',
@@ -55,6 +67,7 @@ export function SettingsDialog() {
   const [showAnthropicKey, setShowAnthropicKey] = useState(false);
   const [showOpenAIKey, setShowOpenAIKey] = useState(false);
   const [showGeminiKey, setShowGeminiKey] = useState(false);
+  const [showGroqKey, setShowGroqKey] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
 
@@ -69,6 +82,8 @@ export function SettingsDialog() {
         openaiModel:     s.openaiModel     || 'gpt-4o',
         geminiApiKey:    s.geminiApiKey    || '',
         geminiModel:     s.geminiModel     || 'gemini-2.0-flash',
+        groqApiKey:      s.groqApiKey      || '',
+        groqModel:       s.groqModel       || 'llama-3.3-70b-versatile',
         ollamaBaseUrl:   s.ollamaBaseUrl   || 'http://localhost:11434',
         ollamaModel:     s.ollamaModel     || 'llama3',
         theme:           s.theme           || 'dark',
@@ -294,6 +309,35 @@ export function SettingsDialog() {
                   </div>
                   <p className="text-[11px]" style={{ color: 'var(--text-faint)' }}>
                     Get your API key at Google AI Studio. Stored locally.
+                  </p>
+                </>
+              )}
+
+              {form.aiProvider === 'groq' && (
+                <>
+                  <ApiKeyField
+                    label="API Key"
+                    value={form.groqApiKey}
+                    show={showGroqKey}
+                    onToggle={() => setShowGroqKey(v => !v)}
+                    onChange={v => setForm(p => ({ ...p, groqApiKey: v }))}
+                    placeholder="gsk_..."
+                  />
+                  <div>
+                    <label className="text-xs font-medium block mb-1.5" style={{ color: 'var(--text-muted)' }}>Model</label>
+                    <div className="relative">
+                      <select
+                        value={form.groqModel}
+                        onChange={e => setForm(p => ({ ...p, groqModel: e.target.value }))}
+                        className="db-input text-sm appearance-none pr-8"
+                      >
+                        {GROQ_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
+                      </select>
+                      <ChevronDown size={13} className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" style={{ color: 'var(--text-muted)' }} />
+                    </div>
+                  </div>
+                  <p className="text-[11px]" style={{ color: 'var(--text-faint)' }}>
+                    Groq oferece uma camada gratuita generosa com inferência ultra-rápida. Obtenha sua chave em console.groq.com.
                   </p>
                 </>
               )}

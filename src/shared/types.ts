@@ -140,7 +140,7 @@ export interface HistoryEntry {
 
 // ─── App Settings ────────────────────────────────────────────────────────────
 
-export type AIProvider = 'anthropic' | 'openai' | 'gemini' | 'ollama';
+export type AIProvider = 'anthropic' | 'openai' | 'gemini' | 'ollama' | 'groq';
 
 export interface AppSettings {
   aiProvider: AIProvider;
@@ -160,6 +160,10 @@ export interface AppSettings {
   // Ollama (local)
   ollamaBaseUrl: string;
   ollamaModel: string;
+
+  // Groq
+  groqApiKey: string;
+  groqModel: string;
 
   theme: 'dark' | 'light' | 'system';
   maxRowsPreview: number;

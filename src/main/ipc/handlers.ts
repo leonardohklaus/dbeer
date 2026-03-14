@@ -30,6 +30,8 @@ function getSettings(): AppSettings {
     geminiModel: (store.get('geminiModel') as string) || 'gemini-2.0-flash',
     ollamaBaseUrl: (store.get('ollamaBaseUrl') as string) || 'http://localhost:11434',
     ollamaModel: (store.get('ollamaModel') as string) || 'llama3',
+    groqApiKey: (store.get('groqApiKey') as string) || '',
+    groqModel: (store.get('groqModel') as string) || 'llama-3.3-70b-versatile',
     theme: (store.get('theme') as AppSettings['theme']) || 'dark',
     maxRowsPreview: (store.get('maxRowsPreview') as number) || 500,
     confirmDestructive: (store.get('confirmDestructive') as boolean) ?? true,

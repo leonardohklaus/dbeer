@@ -32,6 +32,7 @@ DBeer is a desktop app built with Electron that translates natural language into
 | Anthropic Claude | Sonnet 4, Opus 4, Haiku 4.5 | API key |
 | OpenAI | GPT-4o, GPT-4o mini, o3-mini | API key |
 | Google Gemini | 2.0 Flash, 1.5 Pro, 1.5 Flash | API key |
+| Groq | Llama 3.3 70B, Llama 3.1 8B, Mixtral, Gemma 2 | API key (free tier available) |
 | Ollama (local) | llama3, deepseek-coder, mistral… | Ollama running locally |
 
 Switch providers at any time in **Settings** — the read-only SQL guard applies to all of them.

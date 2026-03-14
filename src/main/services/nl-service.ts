@@ -4,6 +4,7 @@ import { AnthropicProvider } from './providers/anthropic';
 import { OpenAIProvider } from './providers/openai';
 import { GeminiProvider } from './providers/gemini';
 import { OllamaProvider } from './providers/ollama';
+import { GroqProvider } from './providers/groq';
 
 export class NLService {
   private provider: BaseProvider | null = null;
@@ -40,6 +41,14 @@ export class NLService {
         this.provider = new OllamaProvider(
           settings.ollamaBaseUrl || 'http://localhost:11434',
           settings.ollamaModel || 'llama3',
+        );
+        break;
+
+      case 'groq':
+        if (!settings.groqApiKey) { this.provider = null; return; }
+        this.provider = new GroqProvider(
+          settings.groqApiKey,
+          settings.groqModel || 'llama-3.3-70b-versatile',
         );
         break;
     }
