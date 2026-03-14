@@ -207,19 +207,52 @@ export function registerIPCHandlers(): void {
     const sql = entry.sql[adapter.engine];
     if (!sql) throw new Error(`DBA query "${entryId}" is not supported for ${adapter.engine}`);
 
-    const execResult = await adapter.executeQuery(sql);
-    return {
-      id: randomUUID(),
-      connectionId,
-      naturalLanguage: entry.label,
-      generatedSQL: sql,
-      explanation: entry.description,
-      columns: execResult.columns,
-      rows: execResult.rows,
-      rowCount: execResult.rowCount,
-      executionTimeMs: execResult.executionTimeMs,
-      timestamp: Date.now(),
-    };
+    try {
+      const execResult = await adapter.executeQuery(sql);
+      return {
+        id: randomUUID(),
+        connectionId,
+        naturalLanguage: entry.label,
+        generatedSQL: sql,
+        explanation: entry.description,
+        columns: execResult.columns,
+        rows: execResult.rows,
+        rowCount: execResult.rowCount,
+        executionTimeMs: execResult.executionTimeMs,
+        timestamp: Date.now(),
+      };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+
+      // Convert well-known missing-object errors into a helpful warning result
+      // instead of crashing the renderer with a raw IPC exception.
+      const isExtensionMissing =
+        /relation .* does not exist/i.test(msg) ||
+        /table .* doesn't exist/i.test(msg) ||
+        /unknown table/i.test(msg) ||
+        /invalid object name/i.test(msg);
+
+      if (isExtensionMissing) {
+        const hint = entry.note
+          ? `\n\nHint: ${entry.note}`
+          : '\n\nThis query may require a database extension or elevated privileges.';
+        return {
+          id: randomUUID(),
+          connectionId,
+          naturalLanguage: entry.label,
+          generatedSQL: sql,
+          explanation: `Could not run "${entry.label}": ${msg}${hint}`,
+          columns: [],
+          rows: [],
+          rowCount: 0,
+          executionTimeMs: 0,
+          timestamp: Date.now(),
+          warning: `⚠ ${msg}${hint}`,
+        };
+      }
+
+      throw err; // re-throw unexpected errors
+    }
   });
 
   // ─── Settings ──────────────────────────────────────────────────────────

@@ -109,23 +109,26 @@ FETCH FIRST 50 ROWS ONLY;`.trim(),
 
   {
     id: 'slow_queries',
-    label: 'Slow Queries (Top 20)',
-    description: 'Queries with the highest total execution time.',
+    label: 'Long-Running Queries',
+    description: 'Queries currently running, sorted by elapsed time.',
     category: 'performance',
     engines: ['postgresql', 'mysql', 'sqlserver', 'oracle'],
-    note: 'PostgreSQL: requires pg_stat_statements extension.',
     sql: {
       postgresql: `
 SELECT
-  calls,
-  ROUND(total_exec_time::numeric, 2)            AS total_ms,
-  ROUND((total_exec_time / calls)::numeric, 2)  AS avg_ms,
-  ROUND(min_exec_time::numeric, 2)              AS min_ms,
-  ROUND(max_exec_time::numeric, 2)              AS max_ms,
-  rows,
-  LEFT(query, 300) AS query
-FROM pg_stat_statements
-ORDER BY total_exec_time DESC
+  pid,
+  usename,
+  application_name,
+  state,
+  wait_event_type,
+  wait_event,
+  ROUND(EXTRACT(EPOCH FROM (NOW() - query_start))::numeric, 2) AS elapsed_secs,
+  LEFT(query, 400) AS query
+FROM pg_stat_activity
+WHERE state <> 'idle'
+  AND query_start IS NOT NULL
+  AND pid <> pg_backend_pid()
+ORDER BY elapsed_secs DESC NULLS LAST
 LIMIT 20;`.trim(),
 
       mysql: `
@@ -217,24 +220,35 @@ ORDER BY waiters DESC;`.trim(),
   },
 
   {
-    id: 'top_queries_cpu',
-    label: 'Top Queries by CPU',
-    description: 'Queries consuming the most CPU time.',
+    id: 'pg_stat_statements_slow',
+    label: 'Slow Queries — Historical (pg_stat_statements)',
+    description: 'Historical slow queries aggregated since last stats reset. Requires the pg_stat_statements extension.',
     category: 'performance',
-    engines: ['postgresql', 'sqlserver', 'oracle'],
-    note: 'PostgreSQL: requires pg_stat_statements.',
+    engines: ['postgresql'],
+    note: 'Requires: CREATE EXTENSION pg_stat_statements; (add to shared_preload_libraries in postgresql.conf)',
     sql: {
       postgresql: `
 SELECT
   calls,
-  ROUND((total_exec_time / calls)::numeric, 2) AS avg_ms,
-  ROUND(total_exec_time::numeric, 2)           AS total_ms,
+  ROUND(total_exec_time::numeric, 2)            AS total_ms,
+  ROUND((total_exec_time / calls)::numeric, 2)  AS avg_ms,
+  ROUND(min_exec_time::numeric, 2)              AS min_ms,
+  ROUND(max_exec_time::numeric, 2)              AS max_ms,
   rows,
   LEFT(query, 300) AS query
 FROM pg_stat_statements
 ORDER BY total_exec_time DESC
 LIMIT 20;`.trim(),
+    },
+  },
 
+  {
+    id: 'top_queries_cpu',
+    label: 'Top Queries by CPU',
+    description: 'Queries consuming the most CPU time.',
+    category: 'performance',
+    engines: ['sqlserver', 'oracle'],
+    sql: {
       sqlserver: `
 SELECT TOP 20
   qs.execution_count,
