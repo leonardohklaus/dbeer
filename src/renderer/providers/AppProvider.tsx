@@ -27,6 +27,7 @@ interface AppState {
   settingsOpen: boolean;
   connectionDialogOpen: boolean;
   historyPanelOpen: boolean;
+  dbaPanelOpen: boolean;
   loading: {
     connecting: boolean;
     querying: boolean;
@@ -48,6 +49,7 @@ const initialState: AppState = {
   settingsOpen: false,
   connectionDialogOpen: false,
   historyPanelOpen: false,
+  dbaPanelOpen: false,
   loading: { connecting: false, querying: false, translating: false },
   error: null,
 };
@@ -74,6 +76,7 @@ type Action =
   | { type: 'SET_SETTINGS_OPEN'; payload: boolean }
   | { type: 'SET_CONNECTION_DIALOG'; payload: boolean }
   | { type: 'SET_HISTORY_PANEL'; payload: boolean }
+  | { type: 'SET_DBA_PANEL'; payload: boolean }
   | { type: 'SET_LOADING'; payload: Partial<AppState['loading']> }
   | { type: 'SET_ERROR'; payload: string | null };
 
@@ -120,6 +123,8 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, connectionDialogOpen: action.payload };
     case 'SET_HISTORY_PANEL':
       return { ...state, historyPanelOpen: action.payload };
+    case 'SET_DBA_PANEL':
+      return { ...state, dbaPanelOpen: action.payload };
     case 'SET_LOADING':
       return { ...state, loading: { ...state.loading, ...action.payload } };
     case 'SET_ERROR':
@@ -139,8 +144,9 @@ interface AppContextType {
     loadConnections: () => Promise<void>;
     connectTo: (config: ConnectionConfig) => Promise<boolean>;
     disconnectFrom: (id: string) => Promise<void>;
-    executeNL: (query: string) => Promise<QueryResult | undefined>;
+    executeNL: (query: string, isDBA?: boolean) => Promise<QueryResult | undefined>;
     executeRaw: (sql: string) => Promise<QueryResult | undefined>;
+    setCurrentResult: (result: QueryResult) => void;
     loadSettings: () => Promise<void>;
     saveSettings: (settings: Partial<AppSettings>) => Promise<void>;
     loadHistory: () => Promise<void>;
@@ -239,13 +245,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ─── Query Execution ──────────────────────────────────────────────────
 
-  const executeNL = useCallback(async (query: string): Promise<QueryResult | undefined> => {
+  const setCurrentResult = useCallback((result: QueryResult) => {
+    dispatch({ type: 'SET_CURRENT_RESULT', payload: result });
+    persistHistoryEntry(result);
+  }, [persistHistoryEntry]);
+
+  const executeNL = useCallback(async (query: string, isDBA = false): Promise<QueryResult | undefined> => {
     if (!state.activeConnectionId) return;
     dispatch({ type: 'SET_LOADING', payload: { querying: true } });
     dispatch({ type: 'SET_ERROR', payload: null });
     dispatch({ type: 'ADD_CONVERSATION', payload: { role: 'user', content: query, timestamp: Date.now() } });
     try {
-      const result = await window.api.executeNL({ connectionId: state.activeConnectionId, naturalLanguage: query });
+      const result = await window.api.executeNL({ connectionId: state.activeConnectionId, naturalLanguage: query, isDBA });
       dispatch({ type: 'SET_CURRENT_RESULT', payload: result });
       await persistHistoryEntry(result);
       dispatch({ type: 'ADD_CONVERSATION', payload: { role: 'assistant', content: result.explanation, sql: result.generatedSQL, timestamp: Date.now() } });
@@ -278,7 +289,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => { loadConnections(); loadSettings(); loadHistory(); }, [loadConnections, loadSettings, loadHistory]);
 
-  const actions = { loadConnections, connectTo, disconnectFrom, executeNL, executeRaw, loadSettings, saveSettings, loadHistory, deleteHistoryEntry, clearAllHistory, toggleFavorite };
+  const actions = { loadConnections, connectTo, disconnectFrom, executeNL, executeRaw, setCurrentResult, loadSettings, saveSettings, loadHistory, deleteHistoryEntry, clearAllHistory, toggleFavorite };
   const themeCtx = { mode: themeMode, resolved, setTheme };
 
   return (

@@ -13,7 +13,7 @@ export class GeminiProvider extends BaseProvider {
   }
 
   async translate(request: NLToSQLRequest): Promise<NLToSQLResponse> {
-    const systemPrompt = this.buildSystemPrompt(request.schema, request.engine);
+    const systemPrompt = this.buildSystemPrompt(request.schema, request.engine, request.isDBA);
     const genModel = this.client.getGenerativeModel({
       model: this.model,
       systemInstruction: systemPrompt,

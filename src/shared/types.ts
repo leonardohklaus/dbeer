@@ -31,6 +31,7 @@ export interface ConnectionStatus {
 export interface QueryRequest {
   connectionId: string;
   naturalLanguage: string;
+  isDBA?: boolean;
 }
 
 export interface QueryResult {
@@ -83,6 +84,20 @@ export interface ForeignKeyInfo {
   referencedColumn: string;
 }
 
+// ─── DBA ─────────────────────────────────────────────────────────────────────
+
+export type DBACategory = 'performance' | 'storage' | 'indexes' | 'connections' | 'locks' | 'maintenance';
+
+/** A DBA catalog entry as seen by the renderer (engine-resolved, single SQL string). */
+export interface DBAEntry {
+  id: string;
+  label: string;
+  description: string;
+  category: DBACategory;
+  sql: string;
+  note?: string;
+}
+
 // ─── NL Processing ───────────────────────────────────────────────────────────
 
 export interface NLToSQLRequest {
@@ -90,6 +105,8 @@ export interface NLToSQLRequest {
   schema: SchemaInfo;
   engine: DatabaseEngine;
   conversationHistory?: ConversationMessage[];
+  /** When true the prompt switches to DBA / admin mode */
+  isDBA?: boolean;
 }
 
 export interface NLToSQLResponse {

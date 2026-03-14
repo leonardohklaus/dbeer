@@ -30,6 +30,11 @@ contextBridge.exposeInMainWorld('api', {
   clearHistory: () => ipcRenderer.invoke('history:clear'),
   toggleFavorite: (id: string) => ipcRenderer.invoke('history:toggle-favorite', id),
 
+  // DBA advisor
+  dbaGetCatalog: (connectionId: string) => ipcRenderer.invoke('dba:catalog', connectionId),
+  dbaGetCategories: () => ipcRenderer.invoke('dba:categories'),
+  dbaExecute: (connectionId: string, entryId: string) => ipcRenderer.invoke('dba:execute', connectionId, entryId),
+
   // Theme
   setNativeTheme: (theme: string) => ipcRenderer.invoke('theme:set-native', theme),
   getSystemTheme: () => ipcRenderer.invoke('theme:get-system'),

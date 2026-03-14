@@ -13,7 +13,7 @@ export class AnthropicProvider extends BaseProvider {
   }
 
   async translate(request: NLToSQLRequest): Promise<NLToSQLResponse> {
-    const systemPrompt = this.buildSystemPrompt(request.schema, request.engine);
+    const systemPrompt = this.buildSystemPrompt(request.schema, request.engine, request.isDBA);
     const messages: Anthropic.MessageParam[] = [];
 
     if (request.conversationHistory) {

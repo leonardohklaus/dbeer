@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { ConnectionManager } from '../database/manager';
 import { NLService } from '../services/nl-service';
 import { validateReadOnlySQL } from '../services/sql-guard';
+import { DBA_CATALOG, DBA_CATEGORY_LABELS } from '../dba/catalog';
 import {
   ConnectionConfig,
   ConnectionStatus,
@@ -13,6 +14,7 @@ import {
   AppSettings,
   NLToSQLRequest,
   HistoryEntry,
+  DBAEntry,
 } from '../../shared/types';
 
 const store = new Store();
@@ -103,6 +105,7 @@ export function registerIPCHandlers(): void {
       naturalLanguage: request.naturalLanguage,
       schema,
       engine: adapter.engine,
+      isDBA: request.isDBA,
     });
 
     // Step 2: READ-ONLY GUARD — validate generated SQL before execution
@@ -163,6 +166,60 @@ export function registerIPCHandlers(): void {
   ipcMain.handle('nl:translate', async (_event: IpcMainInvokeEvent, request: NLToSQLRequest) => {
     ensureNLService();
     return nlService.translate(request);
+  });
+
+  // ─── DBA ───────────────────────────────────────────────────────────────
+
+  // Returns catalog entries that are supported by the active connection's engine.
+  ipcMain.handle('dba:catalog', async (_event: IpcMainInvokeEvent, connectionId: string): Promise<DBAEntry[]> => {
+    const adapter = connectionManager.getAdapter(connectionId);
+    if (!adapter) throw new Error('Not connected');
+    const engine = adapter.engine;
+    return DBA_CATALOG
+      .filter(e => e.engines.includes(engine))
+      .map(e => ({
+        id: e.id,
+        label: e.label,
+        description: e.description,
+        category: e.category as DBAEntry['category'],
+        sql: e.sql[engine] || '',
+        note: e.note,
+      }));
+  });
+
+  // Returns the human-readable category labels map.
+  ipcMain.handle('dba:categories', async (): Promise<Record<string, string>> => {
+    return DBA_CATEGORY_LABELS;
+  });
+
+  // Executes a DBA catalog entry directly (trusted SQL — bypasses NL step).
+  ipcMain.handle('dba:execute', async (
+    _event: IpcMainInvokeEvent,
+    connectionId: string,
+    entryId: string,
+  ): Promise<QueryResult> => {
+    const adapter = connectionManager.getAdapter(connectionId);
+    if (!adapter) throw new Error(`Not connected to ${connectionId}`);
+
+    const entry = DBA_CATALOG.find(e => e.id === entryId);
+    if (!entry) throw new Error(`DBA query "${entryId}" not found in catalog`);
+
+    const sql = entry.sql[adapter.engine];
+    if (!sql) throw new Error(`DBA query "${entryId}" is not supported for ${adapter.engine}`);
+
+    const execResult = await adapter.executeQuery(sql);
+    return {
+      id: randomUUID(),
+      connectionId,
+      naturalLanguage: entry.label,
+      generatedSQL: sql,
+      explanation: entry.description,
+      columns: execResult.columns,
+      rows: execResult.rows,
+      rowCount: execResult.rowCount,
+      executionTimeMs: execResult.executionTimeMs,
+      timestamp: Date.now(),
+    };
   });
 
   // ─── Settings ──────────────────────────────────────────────────────────

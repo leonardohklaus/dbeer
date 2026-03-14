@@ -3,7 +3,8 @@ import { NLToSQLRequest, NLToSQLResponse, SchemaInfo, DatabaseEngine } from '../
 export abstract class BaseProvider {
   abstract translate(request: NLToSQLRequest): Promise<NLToSQLResponse>;
 
-  protected buildSystemPrompt(schema: SchemaInfo, engine: DatabaseEngine): string {
+  protected buildSystemPrompt(schema: SchemaInfo, engine: DatabaseEngine, isDBA = false): string {
+    if (isDBA) return this.buildDBASystemPrompt(engine);
     return `You are an expert SQL translator for DBeer, a READ-ONLY database client. Your job is to convert natural language requests into SELECT queries that retrieve data.
 
 DATABASE ENGINE: ${engine.toUpperCase()}
@@ -60,6 +61,102 @@ RESPONSE FORMAT — respond ONLY with this JSON (no markdown, no code fences):
     "showLegend": true,
     "showGrid": true
   }
+}`;
+  }
+
+  private buildDBASystemPrompt(engine: DatabaseEngine): string {
+    const views: Record<DatabaseEngine, string> = {
+      postgresql: `
+Key system views available:
+- pg_stat_activity        — active sessions and queries
+- pg_stat_statements      — historical query stats (requires extension)
+- pg_stat_user_tables     — table-level stats (vacuum, analyze, row counts)
+- pg_statio_user_tables   — buffer/cache hit ratios per table
+- pg_stat_user_indexes    — index usage stats
+- pg_statio_user_indexes  — index I/O stats
+- pg_locks                — current lock information
+- pg_stat_database        — database-level stats (commits, rollbacks, deadlocks)
+- pg_stat_replication     — streaming replication status
+- pg_class, pg_tables     — schema metadata
+- pg_stat_bgwriter        — background writer stats
+Functions: pg_database_size(), pg_relation_size(), pg_total_relation_size(), pg_size_pretty()`,
+
+      mysql: `
+Key system views available:
+- information_schema.PROCESSLIST          — active queries and sessions
+- information_schema.TABLES               — table sizes and metadata
+- information_schema.STATISTICS           — index definitions
+- performance_schema.events_statements_summary_by_digest — slow query stats
+- performance_schema.table_io_waits_summary_by_index_usage — index usage
+- performance_schema.global_status        — server status variables (connections, InnoDB)
+- information_schema.INNODB_TRX           — active InnoDB transactions
+- performance_schema.data_locks           — current locks (MySQL 8+)
+Use SHOW STATUS, SHOW VARIABLES, SHOW ENGINE INNODB STATUS for server info.`,
+
+      sqlserver: `
+Key DMVs and system views:
+- sys.dm_exec_requests          — active requests
+- sys.dm_exec_query_stats       — cached query execution stats
+- sys.dm_exec_sql_text()        — retrieves SQL text (CROSS APPLY)
+- sys.dm_exec_sessions          — current sessions
+- sys.dm_os_wait_stats          — wait type statistics
+- sys.dm_tran_locks             — current lock information
+- sys.dm_db_index_usage_stats   — index seek/scan counts
+- sys.dm_db_missing_index_*     — missing index recommendations
+- sys.dm_db_index_physical_stats() — fragmentation analysis
+- sys.indexes, sys.tables, sys.schemas — schema metadata
+- sys.database_files, sys.master_files — file sizes`,
+
+      oracle: `
+Key dynamic views:
+- v$session           — active sessions
+- v$sql               — cached SQL statements with stats
+- v$session_wait      — current wait events
+- v$lock              — lock information
+- v$sysstat           — system statistics
+- v$event_name        — wait event names
+- dba_segments        — space usage by segment/table
+- dba_tables          — table metadata
+- dba_indexes         — index metadata
+- dba_tablespace_usage_metrics — tablespace utilization
+- dba_objects         — all database objects
+Use FETCH FIRST n ROWS ONLY for pagination.`,
+
+      sqlite: `
+Available PRAGMAs for admin queries:
+- PRAGMA integrity_check       — corruption check
+- PRAGMA page_count            — number of pages
+- PRAGMA page_size             — bytes per page
+- PRAGMA freelist_count        — unused pages
+- PRAGMA table_info(name)      — columns of a table
+- PRAGMA index_list(name)      — indexes on a table
+- PRAGMA foreign_key_list(name)— foreign keys
+- PRAGMA journal_mode          — WAL/DELETE/etc.
+- PRAGMA wal_checkpoint        — WAL info
+Also query sqlite_master / sqlite_schema for schema info.
+SQLite has minimal server-side monitoring — most DBA info is schema-level.`,
+    };
+
+    return `You are a database administrator assistant for DBeer. Your job is to write SQL queries that inspect the health, performance, and storage of the ${engine.toUpperCase()} database.
+
+DATABASE ENGINE: ${engine.toUpperCase()}
+${views[engine]}
+
+RULES:
+1. Only generate SELECT, WITH (CTE), SHOW, DESCRIBE, EXPLAIN, or PRAGMA statements.
+2. NEVER generate any data modification or DDL (INSERT, UPDATE, DELETE, CREATE, ALTER, DROP, TRUNCATE, GRANT, REVOKE, EXEC, CALL).
+3. If the user asks for an action that modifies data or schema, refuse and explain.
+4. Use system views/DMVs/PRAGMAs listed above when appropriate.
+5. Limit result sets — use LIMIT / TOP / FETCH FIRST to avoid returning millions of rows.
+6. Prefer human-readable sizes (pg_size_pretty, /1024/1024 MB conversions).
+7. Include useful derived columns (ratios, percentages, formatted sizes).
+
+RESPONSE FORMAT — respond ONLY with this JSON (no markdown, no code fences):
+{
+  "sql": "THE ADMIN QUERY",
+  "explanation": "What this query shows and how to interpret the results",
+  "isReadOnly": true,
+  "suggestedFollowUps": ["optional follow-up suggestion 1", "optional follow-up 2"]
 }`;
   }
 

@@ -13,6 +13,7 @@ import {
   Plug,
   PlugZap,
   History,
+  Shield,
 } from 'lucide-react';
 
 const ENGINE_ICONS: Record<DatabaseEngine, { label: string; color: string }> = {
@@ -223,6 +224,13 @@ export function Sidebar() {
               {state.queryHistory.length}
             </span>
           )}
+        </button>
+        <button
+          onClick={() => dispatch({ type: 'SET_DBA_PANEL', payload: true })}
+          className="sidebar-item w-full"
+        >
+          <Shield size={16} />
+          <span>DBA Advisor</span>
         </button>
         <button
           onClick={() => dispatch({ type: 'SET_SETTINGS_OPEN', payload: true })}
