@@ -21,8 +21,15 @@ const nlService = new NLService();
 
 function getSettings(): AppSettings {
   return {
+    aiProvider: (store.get('aiProvider') as AppSettings['aiProvider']) || 'anthropic',
     anthropicApiKey: (store.get('anthropicApiKey') as string) || '',
     claudeModel: (store.get('claudeModel') as string) || 'claude-sonnet-4-20250514',
+    openaiApiKey: (store.get('openaiApiKey') as string) || '',
+    openaiModel: (store.get('openaiModel') as string) || 'gpt-4o',
+    geminiApiKey: (store.get('geminiApiKey') as string) || '',
+    geminiModel: (store.get('geminiModel') as string) || 'gemini-2.0-flash',
+    ollamaBaseUrl: (store.get('ollamaBaseUrl') as string) || 'http://localhost:11434',
+    ollamaModel: (store.get('ollamaModel') as string) || 'llama3',
     theme: (store.get('theme') as AppSettings['theme']) || 'dark',
     maxRowsPreview: (store.get('maxRowsPreview') as number) || 500,
     confirmDestructive: (store.get('confirmDestructive') as boolean) ?? true,
@@ -31,10 +38,7 @@ function getSettings(): AppSettings {
 }
 
 function ensureNLService(): void {
-  const settings = getSettings();
-  if (settings.anthropicApiKey) {
-    nlService.updateConfig(settings.anthropicApiKey, settings.claudeModel);
-  }
+  nlService.updateConfig(getSettings());
 }
 
 export function registerIPCHandlers(): void {
@@ -169,9 +173,7 @@ export function registerIPCHandlers(): void {
     for (const [key, value] of Object.entries(settings)) {
       store.set(key, value);
     }
-    if (settings.anthropicApiKey || settings.claudeModel) {
-      ensureNLService();
-    }
+    ensureNLService();
   });
 
   // ─── Saved Connections ─────────────────────────────────────────────────

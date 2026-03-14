@@ -6,10 +6,10 @@ DBeer is a desktop app built with Electron that translates natural language into
 
 ## Features
 
-- **Natural language to SQL** — powered by Claude via the Anthropic API
-- **Read-only by design** — two-layer enforcement (AI prompt + `sql-guard` regex blacklist) blocks any INSERT, UPDATE, DELETE, DDL, or administrative statement
+- **Natural language to SQL** — choose your AI provider: Anthropic Claude, OpenAI GPT, Google Gemini, or Ollama (local)
+- **Read-only by design** — two-layer enforcement (AI prompt + `sql-guard` regex blacklist) blocks any INSERT, UPDATE, DELETE, DDL, or administrative statement, regardless of which AI provider is used
 - **Multi-database support** — PostgreSQL, MySQL, SQL Server, Oracle, SQLite
-- **Schema-aware** — automatically introspects tables, columns, primary/foreign keys, and views so Claude generates accurate queries
+- **Schema-aware** — automatically introspects tables, columns, primary/foreign keys, and views so the model generates accurate queries
 - **Data visualization** — ask for a chart and get bar, line, area, pie, scatter, or horizontal bar charts rendered with Recharts
 - **Conversation context** — follow-up questions reference previous queries (last 6 turns)
 - **Query history** — persistent history with favorites
@@ -25,10 +25,21 @@ DBeer is a desktop app built with Electron that translates natural language into
 | Oracle     | `oracledb`     |
 | SQLite     | `better-sqlite3` |
 
+## AI Providers
+
+| Provider | Models | Requires |
+|----------|--------|----------|
+| Anthropic Claude | Sonnet 4, Opus 4, Haiku 4.5 | API key |
+| OpenAI | GPT-4o, GPT-4o mini, o3-mini | API key |
+| Google Gemini | 2.0 Flash, 1.5 Pro, 1.5 Flash | API key |
+| Ollama (local) | llama3, deepseek-coder, mistral… | Ollama running locally |
+
+Switch providers at any time in **Settings** — the read-only SQL guard applies to all of them.
+
 ## Requirements
 
 - Node.js 18+
-- An [Anthropic API key](https://console.anthropic.com/)
+- An API key for your chosen AI provider (or [Ollama](https://ollama.com) for fully local usage)
 
 ## Getting Started
 

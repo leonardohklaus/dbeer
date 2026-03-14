@@ -140,9 +140,27 @@ export interface HistoryEntry {
 
 // ─── App Settings ────────────────────────────────────────────────────────────
 
+export type AIProvider = 'anthropic' | 'openai' | 'gemini' | 'ollama';
+
 export interface AppSettings {
+  aiProvider: AIProvider;
+
+  // Anthropic / Claude
   anthropicApiKey: string;
   claudeModel: string;
+
+  // OpenAI
+  openaiApiKey: string;
+  openaiModel: string;
+
+  // Google Gemini
+  geminiApiKey: string;
+  geminiModel: string;
+
+  // Ollama (local)
+  ollamaBaseUrl: string;
+  ollamaModel: string;
+
   theme: 'dark' | 'light' | 'system';
   maxRowsPreview: number;
   confirmDestructive: boolean;
