@@ -24,6 +24,8 @@ function getIconPath(): string | undefined {
 function createWindow(): void {
   const iconPath = getIconPath();
 
+  const isMac = process.platform === 'darwin';
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -31,8 +33,9 @@ function createWindow(): void {
     minHeight: 600,
     title: 'DBeer',
     backgroundColor: '#0a0c10',
-    titleBarStyle: 'hiddenInset',
-    trafficLightPosition: { x: 16, y: 16 },
+    // hiddenInset is macOS-only; use default frame on Windows/Linux
+    titleBarStyle: isMac ? 'hiddenInset' : 'default',
+    ...(isMac ? { trafficLightPosition: { x: 16, y: 16 } } : {}),
     icon: iconPath ? nativeImage.createFromPath(iconPath) : undefined,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),

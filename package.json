@@ -58,6 +58,14 @@
     "appId": "com.dbeer.app",
     "productName": "DBeer",
     "icon": "assets/icon.png",
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/better-sqlite3/**",
+      "node_modules/oracledb/**",
+      "node_modules/pg/**",
+      "node_modules/mysql2/**",
+      "node_modules/mssql/**"
+    ],
     "directories": {
       "output": "release"
     },
@@ -69,24 +77,27 @@
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "assets/icon.png",
-      "target": [
-        "dmg",
-        "zip"
-      ]
+      "target": ["dmg", "zip"]
     },
     "win": {
       "icon": "assets/icon.png",
+      "requestedExecutionLevel": "asInvoker",
       "target": [
-        "nsis",
-        "portable"
+        { "target": "nsis",     "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
       ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "DBeer",
+      "deleteAppDataOnUninstall": false
     },
     "linux": {
       "icon": "assets/icon.png",
-      "target": [
-        "AppImage",
-        "deb"
-      ],
+      "target": ["AppImage", "deb"],
       "category": "Development"
     }
   }

@@ -1,22 +1,46 @@
 import { DatabaseAdapter } from './adapter';
-import { PostgreSQLAdapter } from './postgresql';
-import { MySQLAdapter } from './mysql';
-import { SQLServerAdapter } from './sqlserver';
-import { OracleAdapter } from './oracle';
-import { SQLiteAdapter } from './sqlite';
 import { ConnectionConfig, ConnectionStatus, SchemaInfo } from '../../shared/types';
 
 export class ConnectionManager {
   private adapters = new Map<string, DatabaseAdapter>();
   private schemas = new Map<string, SchemaInfo>();
 
+  // Adapters are loaded lazily so a broken native module (e.g. oracledb
+  // without Oracle Client) doesn't crash the app before the window opens.
   createAdapter(config: ConnectionConfig): DatabaseAdapter {
     switch (config.engine) {
-      case 'postgresql': return new PostgreSQLAdapter(config);
-      case 'mysql': return new MySQLAdapter(config);
-      case 'sqlserver': return new SQLServerAdapter(config);
-      case 'oracle': return new OracleAdapter(config);
-      case 'sqlite': return new SQLiteAdapter(config);
+      case 'postgresql': {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { PostgreSQLAdapter } = require('./postgresql');
+        return new PostgreSQLAdapter(config);
+      }
+      case 'mysql': {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { MySQLAdapter } = require('./mysql');
+        return new MySQLAdapter(config);
+      }
+      case 'sqlserver': {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { SQLServerAdapter } = require('./sqlserver');
+        return new SQLServerAdapter(config);
+      }
+      case 'oracle': {
+        try {
+          // eslint-disable-next-line @typescript-eslint/no-require-imports
+          const { OracleAdapter } = require('./oracle');
+          return new OracleAdapter(config);
+        } catch {
+          throw new Error(
+            'Oracle driver failed to load. ' +
+            'Make sure oracledb is installed and Oracle Instant Client is available on your system.'
+          );
+        }
+      }
+      case 'sqlite': {
+        // eslint-disable-next-line @typescript-eslint/no-require-imports
+        const { SQLiteAdapter } = require('./sqlite');
+        return new SQLiteAdapter(config);
+      }
       default:
         throw new Error(`Unsupported database engine: ${config.engine}`);
     }
