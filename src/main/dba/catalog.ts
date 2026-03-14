@@ -688,7 +688,7 @@ ORDER BY tl.request_session_id;`.trim(),
       postgresql: `
 SELECT
   schemaname,
-  tablename,
+  relname                                                   AS tablename,
   n_live_tup                                                AS live_rows,
   n_dead_tup                                                AS dead_rows,
   ROUND(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup,0), 2) AS dead_pct,
@@ -713,7 +713,7 @@ ORDER BY n_dead_tup DESC;`.trim(),
       postgresql: `
 SELECT
   schemaname,
-  tablename,
+  relname        AS tablename,
   heap_blks_hit  AS cache_hits,
   heap_blks_read AS disk_reads,
   ROUND(
@@ -750,9 +750,9 @@ ORDER BY VARIABLE_NAME;`.trim(),
       postgresql: `
 SELECT
   schemaname,
-  tablename,
-  pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS total_size,
-  ROUND(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup, 0), 2) AS bloat_pct,
+  relname                                                              AS tablename,
+  pg_size_pretty(pg_total_relation_size(schemaname||'.'||relname))    AS total_size,
+  ROUND(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup, 0), 2)  AS bloat_pct,
   n_dead_tup  AS dead_tuples,
   n_live_tup  AS live_tuples,
   last_autovacuum
