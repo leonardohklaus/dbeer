@@ -1,6 +1,6 @@
 {
   "name": "dbeer",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Natural language database client — talk to your databases in plain language",
   "main": "dist/main/main.js",
   "author": "DBeer",
