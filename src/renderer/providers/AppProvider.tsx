@@ -287,7 +287,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   }, [state.activeConnectionId, persistHistoryEntry]);
 
+  // Load on startup
   useEffect(() => { loadConnections(); loadSettings(); loadHistory(); }, [loadConnections, loadSettings, loadHistory]);
+
+  // Reload from persistent store every time the history panel is opened so the
+  // list is always up-to-date (e.g. after entries added in the same session but
+  // before the initial load settled, or after external changes).
+  useEffect(() => {
+    if (state.historyPanelOpen) loadHistory();
+  }, [state.historyPanelOpen, loadHistory]);
 
   const actions = { loadConnections, connectTo, disconnectFrom, executeNL, executeRaw, setCurrentResult, loadSettings, saveSettings, loadHistory, deleteHistoryEntry, clearAllHistory, toggleFavorite };
   const themeCtx = { mode: themeMode, resolved, setTheme };
