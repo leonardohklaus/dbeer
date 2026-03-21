@@ -18,9 +18,11 @@ export function HistoryPanel() {
   const [allConnections, setAllConnections] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  if (!state.historyPanelOpen) return null;
-
-  const activeConn = state.connections.find(c => c.id === state.activeConnectionId);
+  // All hooks must be called before any early return (Rules of Hooks).
+  const activeConn = useMemo(
+    () => state.connections.find(c => c.id === state.activeConnectionId),
+    [state.connections, state.activeConnectionId]
+  );
 
   const filtered = useMemo(() => {
     let items = state.queryHistory;
@@ -43,6 +45,9 @@ export function HistoryPanel() {
     }
     return items;
   }, [state.queryHistory, search, filterFavorites, allConnections, state.activeConnectionId]);
+
+  // Early return after all hooks.
+  if (!state.historyPanelOpen) return null;
 
   const handleCopySQL = async (entry: HistoryEntry) => {
     await navigator.clipboard.writeText(entry.generatedSQL);
