@@ -3,7 +3,7 @@ import { useApp } from '../providers/AppProvider';
 import { HistoryEntry, DatabaseEngine } from '@shared/types';
 import {
   X, Search, Star, Trash2, Clock, Copy, Check, Play,
-  Filter, AlertTriangle
+  Filter, Globe, Database
 } from 'lucide-react';
 
 const ENGINE_LABELS: Record<DatabaseEngine, string> = {
@@ -14,23 +14,40 @@ export function HistoryPanel() {
   const { state, dispatch, actions } = useApp();
   const [search, setSearch] = useState('');
   const [filterFavorites, setFilterFavorites] = useState(false);
+  // Default: show only entries for the active connection (per-DB isolation).
+  const [allConnections, setAllConnections] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  if (!state.historyPanelOpen) return null;
+  // All hooks must be called before any early return (Rules of Hooks).
+  const activeConn = useMemo(
+    () => state.connections.find(c => c.id === state.activeConnectionId),
+    [state.connections, state.activeConnectionId]
+  );
 
   const filtered = useMemo(() => {
     let items = state.queryHistory;
+
+    // Isolate by connection unless the user opts in to see everything.
+    if (!allConnections && state.activeConnectionId) {
+      items = items.filter(h => h.connectionId === state.activeConnectionId);
+    }
+
     if (filterFavorites) items = items.filter(h => h.favorite);
+
     if (search.trim()) {
       const q = search.toLowerCase();
+      // Use optional chaining to guard against malformed/old entries.
       items = items.filter(h =>
-        h.naturalLanguage.toLowerCase().includes(q) ||
-        h.generatedSQL.toLowerCase().includes(q) ||
-        h.connectionName.toLowerCase().includes(q)
+        h.naturalLanguage?.toLowerCase().includes(q) ||
+        h.generatedSQL?.toLowerCase().includes(q) ||
+        h.connectionName?.toLowerCase().includes(q)
       );
     }
     return items;
-  }, [state.queryHistory, search, filterFavorites]);
+  }, [state.queryHistory, search, filterFavorites, allConnections, state.activeConnectionId]);
+
+  // Early return after all hooks.
+  if (!state.historyPanelOpen) return null;
 
   const handleCopySQL = async (entry: HistoryEntry) => {
     await navigator.clipboard.writeText(entry.generatedSQL);
@@ -40,6 +57,16 @@ export function HistoryPanel() {
 
   const handleReplay = async (entry: HistoryEntry) => {
     if (!state.activeConnectionId) return;
+
+    // Warn when the history entry belongs to a different connection — running
+    // SQL from another DB on the active one can produce wrong results.
+    if (entry.connectionId !== state.activeConnectionId) {
+      const ok = window.confirm(
+        `Esta query foi gerada para "${entry.connectionName}".\n\nDeseja executá-la na conexão ativa ("${activeConn?.name ?? 'atual'}")?\n\nO resultado pode ser incorreto se os schemas forem diferentes.`
+      );
+      if (!ok) return;
+    }
+
     dispatch({ type: 'SET_HISTORY_PANEL', payload: false });
     await actions.executeRaw(entry.generatedSQL);
   };
@@ -59,16 +86,19 @@ export function HistoryPanel() {
             <Clock size={18} className="text-forge-400" />
             <h2 className="font-display font-semibold" style={{ color: 'var(--text-primary)' }}>Query History</h2>
             <span className="text-[11px] px-2 py-0.5 rounded-full" style={{ backgroundColor: 'var(--surface-3)', color: 'var(--text-muted)' }}>
-              {state.queryHistory.length}
+              {filtered.length}
+              {!allConnections && state.queryHistory.length > filtered.length && (
+                <span style={{ color: 'var(--text-faint)' }}> / {state.queryHistory.length}</span>
+              )}
             </span>
           </div>
           <div className="flex items-center gap-1">
-            {state.queryHistory.length > 0 && (
+            {filtered.length > 0 && (
               <button
-                onClick={() => { if (confirm('Clear all history?')) actions.clearAllHistory(); }}
+                onClick={() => { if (confirm('Limpar todo o histórico?')) actions.clearAllHistory(); }}
                 className="p-1.5 rounded-md transition-colors"
                 style={{ color: 'var(--text-faint)' }}
-                title="Clear all"
+                title="Limpar tudo"
               >
                 <Trash2 size={14} />
               </button>
@@ -87,28 +117,63 @@ export function HistoryPanel() {
               type="text"
               value={search}
               onChange={e => setSearch(e.target.value)}
-              placeholder="Search queries..."
+              placeholder="Buscar queries..."
               className="db-input pl-9 py-2 text-xs"
             />
           </div>
+          {/* Scope toggle: active connection ↔ all connections */}
+          <button
+            onClick={() => setAllConnections(!allConnections)}
+            className={`p-2 rounded-lg transition-all ${allConnections ? 'bg-blue-500/15 text-blue-400' : ''}`}
+            style={!allConnections ? { color: 'var(--text-faint)' } : undefined}
+            title={allConnections ? 'Exibindo todas as conexões — clique para filtrar pela conexão ativa' : 'Exibindo conexão ativa — clique para ver todas'}
+          >
+            {allConnections ? <Globe size={14} /> : <Database size={14} />}
+          </button>
           <button
             onClick={() => setFilterFavorites(!filterFavorites)}
             className={`p-2 rounded-lg transition-all ${filterFavorites ? 'bg-amber-500/15 text-amber-400' : ''}`}
             style={!filterFavorites ? { color: 'var(--text-faint)' } : undefined}
-            title="Show favorites only"
+            title="Apenas favoritos"
           >
             <Star size={14} fill={filterFavorites ? 'currentColor' : 'none'} />
           </button>
         </div>
+
+        {/* Active connection badge */}
+        {!allConnections && activeConn && (
+          <div className="px-5 py-2 flex items-center gap-1.5 text-[11px]" style={{ backgroundColor: 'var(--surface-2)', color: 'var(--text-faint)', borderBottom: '1px solid var(--surface-3)' }}>
+            <span
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ backgroundColor: getEngineColor(activeConn.engine) }}
+            />
+            <span>Filtrando por <strong style={{ color: 'var(--text-secondary)' }}>{activeConn.name}</strong></span>
+          </div>
+        )}
 
         {/* List */}
         <div className="flex-1 overflow-y-auto">
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full gap-3" style={{ color: 'var(--text-faint)' }}>
               <Clock size={40} style={{ opacity: 0.3 }} />
-              <p className="text-sm">
-                {search ? 'No matching queries found' : filterFavorites ? 'No favorite queries yet' : 'No query history yet'}
+              <p className="text-sm text-center px-6">
+                {search
+                  ? 'Nenhuma query encontrada'
+                  : filterFavorites
+                    ? 'Nenhum favorito ainda'
+                    : !allConnections && activeConn
+                      ? `Nenhuma query para "${activeConn.name}" ainda`
+                      : 'Nenhum histórico ainda'}
               </p>
+              {!allConnections && state.queryHistory.length > 0 && (
+                <button
+                  onClick={() => setAllConnections(true)}
+                  className="text-xs underline"
+                  style={{ color: 'var(--text-muted)' }}
+                >
+                  Ver todas as conexões ({state.queryHistory.length})
+                </button>
+              )}
             </div>
           ) : (
             <div className="divide-y" style={{ borderColor: 'var(--surface-3)' }}>
